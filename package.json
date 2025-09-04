@@ -1,0 +1,26 @@
+{
+  "name": "api-cost-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API cost tracking application with Effect-TS",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"pnpm run dev --filter=backend\" \"pnpm run dev --filter=frontend\"",
+    "build": "pnpm run build --filter=backend && pnpm run build --filter=frontend",
+    "test": "pnpm run test --filter=backend && pnpm run test --filter=frontend",
+    "clean": "pnpm run clean --filter=backend && pnpm run clean --filter=frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

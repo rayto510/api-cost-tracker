@@ -1,0 +1,26 @@
+{
+  "name": "@api-cost-tracker/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared types and schemas for API cost tracking",
+  "main": "index.ts",
+  "type": "module",
+  "exports": {
+    "./*": "./*"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@effect/schema": "^0.72.0",
+    "effect": "^3.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

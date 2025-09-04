@@ -1,0 +1,34 @@
+# Node modules
+node_modules/
+
+# Build outputs
+**/dist/
+**/build/
+**/.next/
+**/out/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage
+**/coverage/
+
+# Editor configs
+.vscode/
+.idea/
+
+# Caches
+**/.cache/
+
