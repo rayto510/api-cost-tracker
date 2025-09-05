@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  integrations Integration[]
+}
+
+model Integration {
+  id       String  @id @default(uuid())
+  name     String
+  type     String
+  apiKey   String
+  user     User    @relation(fields: [userId], references: [id])
+  userId   String
+  alerts   Alert[]
+}
+
+model Alert {
+  id                 String       @id @default(uuid())
+  integration        Integration  @relation(fields: [integrationId], references: [id])
+  integrationId      String
+  threshold          Float
+  type               AlertType
+  notificationMethod NotificationMethod
+  triggered          Boolean      @default(false)
+}
+
+enum AlertType {
+  cost
+  usage
+}
+
+enum NotificationMethod {
+  email
+  slack
+}
+
+model UsageEntry {
+  id     String   @id @default(uuid())
+  date   DateTime
+  usage  Float
+  cost   Float
+  // optionally, you could link usage to an integration or user if needed
+}
