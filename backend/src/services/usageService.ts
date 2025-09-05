@@ -1,8 +1,8 @@
 // src/services/usageService.effect.ts
 import * as Effect from "@effect/io/Effect";
 import { pipe } from "@effect/data/Function";
-import { getIntegrationEffect } from "./integrationService.effect";
-import { checkAlertsEffect } from "./alertsService.effect";
+import { getIntegrationEffect } from "@services/integrationService.js";
+import { checkAlertsEffect } from "@services/alertsService.js";
 
 export interface UsageEntry {
   date: string;

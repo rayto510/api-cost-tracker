@@ -1,7 +1,7 @@
 // src/services/alertsService.effect.ts
 import * as Effect from "@effect/io/Effect";
-import { getUsageEffect } from "./usageService.effect";
-import { getIntegrationEffect } from "./integrationService.effect";
+import { getUsageEffect } from "@services/usageService.js";
+import { getIntegrationEffect } from "@services/integrationService.js";
 import { pipe } from "@effect/data/Function";
 
 export interface Alert {

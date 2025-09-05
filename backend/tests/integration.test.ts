@@ -3,7 +3,7 @@ import { buildServer } from "../src/server";
 import {
   // Reset in-memory store if needed
   integrations as integrationStore,
-} from "../src/services/integrationService.effect";
+} from "../src/services/integrationService";
 
 let app: ReturnType<typeof buildServer>;
 

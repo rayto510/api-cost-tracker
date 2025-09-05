@@ -1,7 +1,7 @@
 // tests/alerts.test.ts
 import { buildServer } from "../src/server";
-import { alerts as alertsStore } from "../src/services/alertsService.effect";
-import { integrations as integrationStore } from "../src/services/integrationService.effect";
+// import { alerts as alertsStore } from "../src/services/alertsService";
+import { alerts as alertsStore } from "../src/services/alertsService";
 
 let app: ReturnType<typeof buildServer>;
 let integrationId: string;

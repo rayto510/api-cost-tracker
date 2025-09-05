@@ -10,7 +10,7 @@ import {
   deleteIntegrationEffect,
   listIntegrationsEffect,
   Integration,
-} from "./services/integrationService.effect";
+} from "@services/integrationService.js";
 
 import {
   recordUsageValidatedEffect,
@@ -19,7 +19,7 @@ import {
   updateUsageEffect,
   deleteUsageEffect,
   UsageEntry,
-} from "./services/usageService.effect";
+} from "@services/usageService.js";
 
 import {
   getAlertEffect,
@@ -27,7 +27,7 @@ import {
   updateAlertEffect,
   deleteAlertEffect,
   Alert,
-} from "./services/alertsService.effect";
+} from "@services/alertsService.js";
 
 import {
   createUserEffect,
@@ -36,13 +36,13 @@ import {
   deleteUserEffect,
   authenticateUserEffect,
   User,
-} from "./services/userService.effect";
+} from "@services/userService.js";
 
 import {
   signTokenEffect,
   signRefreshTokenEffect,
   verifyRefreshTokenEffect,
-} from "./services/authService.effect";
+} from "@services/authService.js";
 
 export function buildServer() {
   const app = Fastify();
