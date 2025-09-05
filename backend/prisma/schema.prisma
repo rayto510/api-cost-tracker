@@ -3,36 +3,49 @@ generator client {
 }
 
 datasource db {
-    provider = "postgresql"
-    url = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String        @id @default(uuid())
+  id           String         @id @default(cuid())
   name         String
-  email        String        @unique
+  email        String         @unique
   passwordHash String
-  integrations Integration[]
+  integrations Integration[]  // <-- remove @relation(onDelete: Cascade)
+  usage        UsageEntry[]   // <-- remove @relation(onDelete: Cascade)
 }
 
 model Integration {
-  id       String  @id @default(uuid())
-  name     String
-  type     String
-  apiKey   String
-  user     User    @relation(fields: [userId], references: [id])
-  userId   String
-  alerts   Alert[]
+  id          String       @id @default(cuid())
+  name        String
+  type        String
+  apiKey      String
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alerts      Alert[]      // <-- remove @relation(onDelete: Cascade)
+  usage       UsageEntry[] // <-- remove @relation(onDelete: Cascade)
 }
 
 model Alert {
-  id                 String       @id @default(uuid())
-  integration        Integration  @relation(fields: [integrationId], references: [id])
+  id                 String      @id @default(cuid())
   integrationId      String
+  integration        Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   threshold          Float
-  type               AlertType
-  notificationMethod NotificationMethod
-  triggered          Boolean      @default(false)
+  type               String
+  notificationMethod String
+  triggered          Boolean? 
+}
+
+model UsageEntry {
+  id            String      @id @default(cuid())
+  date          DateTime
+  usage         Float
+  cost          Float
+  integrationId String
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum AlertType {
@@ -43,12 +56,4 @@ enum AlertType {
 enum NotificationMethod {
   email
   slack
-}
-
-model UsageEntry {
-  id     String   @id @default(uuid())
-  date   DateTime
-  usage  Float
-  cost   Float
-  // optionally, you could link usage to an integration or user if needed
 }

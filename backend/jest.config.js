@@ -12,7 +12,10 @@ export default {
   coverageReporters: ["text", "lcov", "html"],
   setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
   moduleNameMapper: {
-    "^@(.*)/(.*).js$": "<rootDir>/src/$1/$2.ts",
+    // Map @services/*.js -> src/services/*.ts
+    "^@services/(.*)\\.js$": "<rootDir>/src/services/$1.ts",
+    // Map @db/db.js -> src/db/db.ts
+    "^@db/(.*)\\.js$": "<rootDir>/src/db/$1.ts",
     "^@shared/(.*)$": "<rootDir>/../shared/$1",
   },
 };

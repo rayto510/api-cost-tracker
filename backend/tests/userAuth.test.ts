@@ -1,5 +1,6 @@
 // tests/userAuth.test.ts
 import { buildServer } from "../src/server";
+import { prisma } from "../src/db/db";
 
 let app: ReturnType<typeof buildServer>;
 
@@ -9,7 +10,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await prisma.user.deleteMany(); // clean up test users
   await app.close();
+  await prisma.$disconnect();
 });
 
 describe("User endpoints", () => {
@@ -39,9 +42,9 @@ describe("User endpoints", () => {
     const res = await app.inject({
       method: "POST",
       url: "/users",
-      payload: { name: "Bob" }, // missing email and password
+      payload: { name: "Bob" },
     });
-    expect([400, 422]).toContain(res.statusCode);
+    expect(res.statusCode).toBe(400);
   });
 
   it("retrieves a user by id", async () => {
@@ -96,6 +99,10 @@ describe("Auth endpoints", () => {
       },
     });
     userId = res.json().id;
+  });
+
+  afterAll(async () => {
+    await prisma.user.deleteMany({ where: { id: userId } });
   });
 
   it("logs in a user with correct credentials", async () => {

@@ -1,6 +1,6 @@
-// src/services/userService.effect.ts
+// src/services/userService.ts
 import * as Effect from "@effect/io/Effect";
-import { v4 as uuidv4 } from "uuid";
+import { prisma } from "@db/db.js";
 import bcrypt from "bcryptjs";
 
 export interface User {
@@ -10,33 +10,37 @@ export interface User {
   passwordHash: string;
 }
 
-export const users: Record<string, User> = {};
-
 // --- Create a user ---
 export const createUserEffect = (user: {
   name: string;
   email: string;
   password: string;
 }) =>
-  Effect.sync(() => {
-    const id = uuidv4();
-    const passwordHash = bcrypt.hashSync(user.password, 10);
-    const newUser: User = {
-      id,
-      name: user.name,
-      email: user.email,
-      passwordHash,
-    };
-    users[id] = newUser;
-    return { id, name: newUser.name, email: newUser.email };
+  Effect.tryPromise({
+    try: async () => {
+      const passwordHash = await bcrypt.hash(user.password, 10);
+      const newUser = await prisma.user.create({
+        data: {
+          name: user.name,
+          email: user.email,
+          passwordHash,
+        },
+      });
+      return { id: newUser.id, name: newUser.name, email: newUser.email };
+    },
+    catch: (err) => err as Error,
   });
 
 // --- Get user by ID ---
 export const getUserEffect = (id: string) =>
-  Effect.sync(() => {
-    const user = users[id];
-    if (!user) return null;
-    return { id: user.id, name: user.name, email: user.email };
+  Effect.tryPromise({
+    try: async () => {
+      const user = await prisma.user.findUnique({ where: { id } });
+      if (!user) return null;
+      const { passwordHash, ...rest } = user;
+      return rest;
+    },
+    catch: (err) => err as Error,
   });
 
 // --- Update user ---
@@ -44,26 +48,40 @@ export const updateUserEffect = (
   id: string,
   data: { name?: string; email?: string }
 ) =>
-  Effect.sync(() => {
-    if (!users[id]) return null;
-    users[id] = { ...users[id], ...data };
-    const { passwordHash, ...rest } = users[id];
-    return rest;
+  Effect.tryPromise({
+    try: async () => {
+      const user = await prisma.user.update({
+        where: { id },
+        data,
+      });
+      const { passwordHash, ...rest } = user;
+      return rest;
+    },
+    catch: (err) => err as Error,
   });
 
 // --- Delete user ---
 export const deleteUserEffect = (id: string) =>
-  Effect.sync(() => {
-    if (!users[id]) return null;
-    delete users[id];
-    return { message: "User deleted" };
+  Effect.tryPromise({
+    try: async () => {
+      await prisma.user.delete({ where: { id } });
+      return { message: "User deleted" };
+    },
+    catch: (err) => err as Error,
   });
 
 // --- Authenticate user ---
 export const authenticateUserEffect = (email: string, password: string) =>
-  Effect.sync(() => {
-    const user = Object.values(users).find((u) => u.email === email);
-    if (!user) return null;
-    const valid = bcrypt.compareSync(password, user.passwordHash);
-    return valid ? { id: user.id, name: user.name, email: user.email } : null;
+  Effect.tryPromise({
+    try: async () => {
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user) return null;
+
+      const valid = await bcrypt.compare(password, user.passwordHash);
+      if (!valid) return null;
+
+      const { passwordHash, ...rest } = user;
+      return rest;
+    },
+    catch: (err) => err as Error,
   });
