@@ -1,5 +1,6 @@
 // src/services/integrationService.effect.ts
 import * as Effect from "@effect/io/Effect";
+import { prisma } from "@db/db.js";
 import { v4 as uuidv4 } from "uuid";
 
 export interface Integration {
@@ -9,42 +10,59 @@ export interface Integration {
   apiKey: string;
 }
 
-type IntegrationStore = Record<string, Integration>;
-export const integrations: IntegrationStore = {};
-
 // Add integration
-export const addIntegrationEffect = (data: Omit<Integration, "id">) =>
-  Effect.sync(() => {
-    const id = uuidv4();
-    const integration: Integration = { id, ...data };
-    integrations[id] = integration;
-    return integration;
+export const addIntegrationEffect = (
+  data: Omit<Integration, "id">,
+  ctx: { userId: string }
+) =>
+  Effect.try({
+    try: async () => {
+      const id = uuidv4();
+      const newIntegration = await prisma.integration.create({
+        data: {
+          id,
+          userId: ctx.userId,
+          name: data.name,
+          type: data.type,
+          apiKey: data.apiKey,
+        },
+      });
+      return newIntegration;
+    },
+    catch: (err) => new Error(`Failed to add integration: ${err}`),
   });
 
 // Get integration
 export const getIntegrationEffect = (id: string) =>
-  Effect.sync(() => integrations[id] || null);
+  Effect.sync(() => prisma.integration.findUnique({ where: { id } }));
 
 // Update integration
 export const updateIntegrationEffect = (
   id: string,
   update: Partial<Omit<Integration, "id" | "type">>
 ) =>
-  Effect.sync(() => {
-    if (!integrations[id]) return null;
-    integrations[id] = { ...integrations[id], ...update };
-    return integrations[id];
+  Effect.try({
+    try: async () => {
+      const integration = await prisma.integration.findUnique({
+        where: { id },
+      });
+      if (!integration) throw new Error("Integration not found");
+      return integration;
+    },
+    catch: (err) => new Error(`Failed to get integration: ${err}`),
   });
 
 // Delete integration
 export const deleteIntegrationEffect = (id: string) =>
   Effect.sync(() => {
-    if (!integrations[id]) return null;
-    delete integrations[id];
-    return { message: "Integration deleted" };
+    return prisma.integration.delete({
+      where: { id },
+    });
   });
 
 // List all integrations
-export const listIntegrationsEffect = Effect.sync(() =>
-  Object.values(integrations)
-);
+export const listIntegrationsEffect = (ctx: { userId: string }) =>
+  Effect.try({
+    try: () => prisma.integration.findMany({ where: { userId: ctx.userId } }),
+    catch: (err) => new Error(`Failed to list integrations: ${err}`),
+  });

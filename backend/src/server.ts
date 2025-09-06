@@ -1,7 +1,35 @@
 // src/server.ts
-import Fastify, { FastifyRequest, FastifyReply } from "fastify";
+import Fastify, {
+  FastifyRequest,
+  FastifyReply,
+  RouteGenericInterface,
+} from "fastify";
 import { pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect"; // ✅ correct import
+import { hash } from "bcryptjs";
+
+// Extend FastifyRequest to include 'user'
+declare module "fastify" {
+  interface FastifyRequest {
+    user?: { id: string };
+  }
+}
+
+interface IntegrationParams extends RouteGenericInterface {
+  Params: { id: string };
+}
+
+interface CreateIntegrationBody {
+  Body: Omit<Integration, "id">;
+}
+
+interface GetIntegrationRoute extends RouteGenericInterface {
+  Params: { id: string };
+}
+
+interface UpdateIntegrationBody extends RouteGenericInterface {
+  Body: Partial<Omit<Integration, "id" | "type">>;
+}
 
 import {
   addIntegrationEffect,
@@ -42,7 +70,24 @@ import {
   signTokenEffect,
   signRefreshTokenEffect,
   verifyRefreshTokenEffect,
+  verifyTokenEffect,
 } from "@services/authService.js";
+
+// Pre-handler to attach user info from token
+const authenticate = async (req: FastifyRequest, reply: FastifyReply) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return reply.status(401).send({ error: "Unauthorized" }); // return here
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const payload = await pipe(verifyTokenEffect(token), Effect.runPromise);
+    (req as any).user = { id: payload.userId };
+  } catch {
+    return reply.status(401).send({ error: "Unauthorized" }); // return here too
+  }
+};
 
 export function buildServer() {
   const app = Fastify();
@@ -50,73 +95,101 @@ export function buildServer() {
   // --- Integrations Routes ---
   app.post(
     "/integrations",
-    async (
-      req: FastifyRequest<{ Body: Omit<Integration, "id"> }>,
-      reply: FastifyReply
-    ) => {
-      const result = await pipe(
-        addIntegrationEffect(req.body),
-        Effect.runPromise
-      );
-      reply.send(result);
+    { preHandler: authenticate },
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+
+        // Cast body to Integration payload type
+        const body = req.body as Omit<Integration, "id">;
+
+        const result = await pipe(
+          addIntegrationEffect(body, { userId }),
+          Effect.runPromise
+        );
+
+        reply.send(result);
+      } catch (err: any) {
+        reply
+          .status(500)
+          .send({ error: "Failed to add integration", details: err.message });
+      }
     }
   );
 
+  // GET /integrations/:id
   app.get(
     "/integrations/:id",
-    async (
-      req: FastifyRequest<{ Params: { id: string } }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: authenticate },
+    async (req: FastifyRequest<GetIntegrationRoute>, reply: FastifyReply) => {
       const integration = await pipe(
         getIntegrationEffect(req.params.id),
         Effect.runPromise
       );
+
       if (!integration)
         return reply.status(404).send({ message: "Integration not found" });
       reply.send(integration);
     }
   );
 
+  // PUT /integrations/:id
   app.put(
     "/integrations/:id",
+    { preHandler: authenticate },
     async (
-      req: FastifyRequest<{
-        Params: { id: string };
-        Body: Omit<Integration, "id">;
-      }>,
+      req: FastifyRequest<UpdateIntegrationBody & IntegrationParams>,
       reply: FastifyReply
     ) => {
       const updated = await pipe(
         updateIntegrationEffect(req.params.id, req.body),
         Effect.runPromise
       );
+
       if (!updated)
         return reply.status(404).send({ message: "Integration not found" });
       reply.send(updated);
     }
   );
 
+  // DELETE /integrations/:id
   app.delete(
     "/integrations/:id",
-    async (
-      req: FastifyRequest<{ Params: { id: string } }>,
-      reply: FastifyReply
-    ) => {
-      const deleted = await pipe(
-        deleteIntegrationEffect(req.params.id),
-        Effect.runPromise
-      );
-      if (!deleted)
-        return reply.status(404).send({ message: "Integration not found" });
-      reply.send(deleted);
+    { preHandler: authenticate },
+    async (req: FastifyRequest<IntegrationParams>, reply: FastifyReply) => {
+      await pipe(deleteIntegrationEffect(req.params.id), Effect.runPromise);
+      reply.send({ message: "Integration deleted" });
     }
   );
 
-  app.get("/integrations", async (req, reply) => {
-    const list = await pipe(listIntegrationsEffect, Effect.runPromise);
-    reply.send(list);
-  });
+  app.get(
+    "/integrations",
+    { preHandler: authenticate },
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+          reply.status(401).send({ error: "Unauthorized" });
+          return;
+        }
+
+        // call the effect function with ctx
+        const list = await pipe(
+          listIntegrationsEffect({ userId }), // <-- call the function
+          Effect.runPromise
+        );
+
+        reply.send(list);
+      } catch (err) {
+        reply
+          .status(500)
+          .send({ error: "Failed to list integrations", details: err });
+      }
+    }
+  );
 
   // --- Usage Routes ---
   app.post(
@@ -295,7 +368,11 @@ export function buildServer() {
       if (!req.body.name || !req.body.email || !req.body.password) {
         return reply.status(400).send({ message: "Missing required fields" });
       }
-      const result = await pipe(createUserEffect(req.body), Effect.runPromise);
+      const { name, email, password } = req.body;
+      const result = await pipe(
+        createUserEffect(name, email, password),
+        Effect.runPromise
+      );
       reply.send(result);
     }
   );
@@ -342,6 +419,33 @@ export function buildServer() {
   );
 
   // --- Auth Routes ---
+  app.post(
+    "/auth/signup",
+    async (
+      req: FastifyRequest<{
+        Body: { name: string; email: string; password: string };
+      }>,
+      reply
+    ) => {
+      try {
+        const user = await pipe(
+          createUserEffect(req.body.name, req.body.email, req.body.password),
+          Effect.runPromise
+        );
+
+        const token = await pipe(signTokenEffect(user.id), Effect.runPromise);
+        const refreshToken = await pipe(
+          signRefreshTokenEffect(user.id),
+          Effect.runPromise
+        );
+
+        reply.send({ token, refreshToken });
+      } catch (err) {
+        reply.status(400).send({ message: (err as Error).message });
+      }
+    }
+  );
+
   app.post(
     "/auth/login",
     async (

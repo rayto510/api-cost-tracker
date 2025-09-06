@@ -11,24 +11,20 @@ export interface User {
 }
 
 // --- Create a user ---
-export const createUserEffect = (user: {
-  name: string;
-  email: string;
-  password: string;
-}) =>
+export const createUserEffect = (
+  name: string,
+  email: string,
+  password: string
+) =>
   Effect.tryPromise({
     try: async () => {
-      const passwordHash = await bcrypt.hash(user.password, 10);
-      const newUser = await prisma.user.create({
-        data: {
-          name: user.name,
-          email: user.email,
-          passwordHash,
-        },
+      const hashed = await bcrypt.hash(password, 10);
+      const user = await prisma.user.create({
+        data: { name, email, passwordHash: hashed },
       });
-      return { id: newUser.id, name: newUser.name, email: newUser.email };
+      return user;
     },
-    catch: (err) => err as Error,
+    catch: (err) => new Error(`Failed to create user: ${String(err)}`),
   });
 
 // --- Get user by ID ---

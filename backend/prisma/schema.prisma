@@ -13,7 +13,7 @@ model User {
   email        String         @unique
   passwordHash String
   integrations Integration[]  // <-- remove @relation(onDelete: Cascade)
-  usage        UsageEntry[]   // <-- remove @relation(onDelete: Cascade)
+  usage        Usage[]   // <-- remove @relation(onDelete: Cascade)
 }
 
 model Integration {
@@ -24,7 +24,7 @@ model Integration {
   userId      String
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   alerts      Alert[]      // <-- remove @relation(onDelete: Cascade)
-  usage       UsageEntry[] // <-- remove @relation(onDelete: Cascade)
+  usage       Usage[] // <-- remove @relation(onDelete: Cascade)
 }
 
 model Alert {
@@ -37,7 +37,7 @@ model Alert {
   triggered          Boolean? 
 }
 
-model UsageEntry {
+model Usage {
   id            String      @id @default(cuid())
   date          DateTime
   usage         Float
